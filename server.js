@@ -30,26 +30,31 @@ app.use((req, _, next) => {
 });
 
 app.use("/api/:date(\\d+)", (req, _, next) => {
-  req.date = parseInt(req.params.date) * 1000;
+  req.date = new Date(parseInt(req.params.date));
   next();
 });
 
-app.use("/api/:date(\\d{4}-\\d{2}-\\d{2})", (req, _, next) => {
-  req.date = req.params.date;
-  next();
-});
+app.use("/api/:date?", (req, res) => {
+  const dateParam = req.params.date || Date.now();
+  const date = req.date || new Date(dateParam);
 
-app.use("/api/:date", (req, res) => {
-  if (req.date) {
-    const date = new Date(req.date);
-    return res.json(
-      {
-        unix: date.getTime(),
-        utc: new Date(date).toUTCString(),
-        date: req.params.date
-      }
-    );
+  const isDate = (date) => !isNaN(date.getMonth());
+  const invalidDate = () => { throw new Error("Invalid Date") };
+
+  try {
+    isDate(date) || invalidDate();
+  } catch (e) {
+    res.statusCode = 422;
+    res.json({ error: e.message });
+    console.log(e);
   }
+
+  const data = {
+    unix: date.getTime(),
+    utc: date.toUTCString()
+  }
+
+  res.json(data);
 });
 
 // listen for requests :)
